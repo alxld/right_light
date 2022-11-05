@@ -1,0 +1,16 @@
+{
+  "domain": "right_light",
+  "name": "right_light",
+  "version": "0.1",
+  "config_flow": false,
+  "documentation": "https://www.home-assistant.io/integrations/new_light",
+  "requirements": ["suntime==1.2.5"],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": ["mqtt"],
+  "codeowners": [
+    "@alxld"
+  ],
+  "iot_class": "local_polling"
+}

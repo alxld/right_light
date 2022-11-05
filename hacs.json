@@ -1,0 +1,6 @@
+{
+    "name": "right_light",
+    "country": "US",
+    "render_readme": false,
+    "domains": ["light"]
+}
