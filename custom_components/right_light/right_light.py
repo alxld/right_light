@@ -9,9 +9,10 @@ from datetime import date, timedelta
 class RightLight:
     """RightLight object to control a single light or light group"""
 
-    def __init__(self, ent: entity, hass: HomeAssistant) -> None:
+    def __init__(self, ent: entity, hass: HomeAssistant, debug: False) -> None:
         self._entity = ent
         self._hass = hass
+        self._debug = debug
 
         self._mode = "Off"
         self.today = None
@@ -67,10 +68,11 @@ class RightLight:
         time_ratio = (self.now - prev_time) / (next_time - prev_time)
         time_rem = (next_time - self.now).seconds
 
-        self._logger.error(f"Now: {self.now}")
-        self._logger.error(
-            f"Prev/Next: {prev}, {next}, {prev_time}, {next_time}, {time_ratio}"
-        )
+        if self._debug:
+            self._logger.error(f"Now: {self.now}")
+            self._logger.error(
+                f"Prev/Next: {prev}, {next}, {prev_time}, {next_time}, {time_ratio}"
+            )
 
         if self._mode == "Normal":
             # Compute br/ct for previous point
@@ -93,7 +95,10 @@ class RightLight:
             )
             ct_next = ct_max_next - ct_delta_next
 
-            self._logger.error(f"Prev/Next: {br_prev}/{ct_prev}, {br_next}/{ct_next}")
+            if self._debug:
+                self._logger.error(
+                    f"Prev/Next: {br_prev}/{ct_prev}, {br_next}/{ct_next}"
+                )
 
             # Scale linearly to current time
             br = (br_next - br_prev) * time_ratio + br_prev
@@ -106,7 +111,8 @@ class RightLight:
             if br_next > 255:
                 br_next = 255
 
-            self._logger.error(f"Final: {br}/{ct} -> {time_rem}sec")
+            if self._debug:
+                self._logger.error(f"Final: {br}/{ct} -> {time_rem}sec")
 
             # Turn on light to interpolated values
             await self._hass.services.async_call(
@@ -151,14 +157,16 @@ class RightLight:
             prev_rgb = self.trip_points[self._mode][prev][1]
             next_rgb = self.trip_points[self._mode][next][1]
 
-            self._logger.error(f"Prev/Next: {prev_rgb}/{next_rgb}")
+            if self._debug:
+                self._logger.error(f"Prev/Next: {prev_rgb}/{next_rgb}")
 
             r_now = prev_rgb[0] + (next_rgb[0] - prev_rgb[0]) * time_ratio
             g_now = prev_rgb[1] + (next_rgb[1] - prev_rgb[1]) * time_ratio
             b_now = prev_rgb[2] + (next_rgb[2] - prev_rgb[2]) * time_ratio
             now_rgb = [r_now, g_now, b_now]
 
-            self._logger.error(f"Final: {now_rgb} -> {time_rem}sec")
+            if self._debug:
+                self._logger.error(f"Final: {now_rgb} -> {time_rem}sec")
 
             # Turn on light to interpolated values
             await self._hass.services.async_call(
@@ -198,7 +206,8 @@ class RightLight:
 
     async def _turn_on_specific(self, data) -> None:
         """Disables RightLight functionality and sets light to values in 'data' variable"""
-        self._logger.error(f"_turn_on_specific: {data}")
+        if self._debug:
+            self._logger.error(f"_turn_on_specific: {data}")
         await self._hass.services.async_call("light", "turn_on", data)
 
     async def turn_on_specific(self, data) -> None:
