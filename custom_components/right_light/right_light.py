@@ -9,7 +9,7 @@ from datetime import date, timedelta
 class RightLight:
     """RightLight object to control a single light or light group"""
 
-    def __init__(self, ent: entity, hass: HomeAssistant, debug: False) -> None:
+    def __init__(self, ent: entity, hass: HomeAssistant, debug=False) -> None:
         self._entity = ent
         self._hass = hass
         self._debug = debug
