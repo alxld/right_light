@@ -76,20 +76,20 @@ class RightLight:
 
         if self._mode == "Normal":
             # Compute br/ct for previous point
-            br_max_prev = self.trip_points["Normal"][prev][2] / 255
+            br_max_prev = self.trip_points["Normal"][prev][1][1] / 255
             br_prev = br_max_prev * (self._brightness + self._brightness_override)
 
-            ct_max_prev = self.trip_points["Normal"][prev][1]
+            ct_max_prev = self.trip_points["Normal"][prev][1][0]
             ct_delta_prev = (
                 (self._ct_high - ct_max_prev) * (1 - br_max_prev) * self._ct_scalar
             )
             ct_prev = ct_max_prev - ct_delta_prev
 
             # Compute br/ct for next point
-            br_max_next = self.trip_points["Normal"][next][2] / 255
+            br_max_next = self.trip_points["Normal"][next][1][1] / 255
             br_next = br_max_next * (self._brightness + self._brightness_override)
 
-            ct_max_next = self.trip_points["Normal"][next][1]
+            ct_max_next = self.trip_points["Normal"][next][1][0]
             ct_delta_next = (
                 (self._ct_high - ct_max_next) * (1 - br_max_next) * self._ct_scalar
             )
@@ -284,34 +284,33 @@ class RightLight:
             )
         else:
             self.trip_points["Normal"].append(
-                [self.midnight_early, 2500, 150]
+                [self.midnight_early, [2500, 150]]
             )  # Midnight morning
             self.trip_points["Normal"].append(
-                [self.sunrise - timedelta(minutes=60), 2500, 120]
+                [self.sunrise - timedelta(minutes=60), [2500, 120]]
             )  # Sunrise - 60
             self.trip_points["Normal"].append(
-                [self.sunrise - timedelta(minutes=30), 2700, 170]
+                [self.sunrise - timedelta(minutes=30), [2700, 170]]
             )  # Sunrise - 30
-            self.trip_points["Normal"].append([self.sunrise, 3200, 155])  # Sunrise
+            self.trip_points["Normal"].append([self.sunrise, [3200, 155]])  # Sunrise
             self.trip_points["Normal"].append(
-                [self.sunrise + timedelta(minutes=30), 4700, 255]
+                [self.sunrise + timedelta(minutes=30), [4700, 255]]
             )  # Sunrise + 30
             self.trip_points["Normal"].append(
-                [self.sunset - timedelta(minutes=90), 4200, 255]
+                [self.sunset - timedelta(minutes=90), [4200, 255]]
             )  # Sunset - 90
             self.trip_points["Normal"].append(
-                [self.sunset - timedelta(minutes=30), 3200, 255]
+                [self.sunset - timedelta(minutes=30), [3200, 255]]
             )  # Sunset = 30
-            self.trip_points["Normal"].append([self.sunset, 2700, 255])  # Sunset
+            self.trip_points["Normal"].append([self.sunset, [2700, 255]])  # Sunset
             self.trip_points["Normal"].append(
                 [
                     self.now.replace(microsecond=0, second=0, minute=30, hour=22),
-                    2500,
-                    255,
+                    [2500, 255],
                 ]
             )  # 10:30
             self.trip_points["Normal"].append(
-                [self.midnight_late, 2500, 150]
+                [self.midnight_late, [2500, 150]]
             )  # Midnight night
 
         vivid_trip_points = [
@@ -416,7 +415,7 @@ class RightLight:
             temp = temp + time_step
 
             this_ptr += 1
-            if this_ptr > len(trip_points):
+            if this_ptr >= len(trip_points):
                 this_ptr = 0
 
         return toreturn
