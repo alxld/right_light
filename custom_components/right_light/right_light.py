@@ -403,7 +403,7 @@ class RightLight:
     #                this_ptr = 0
 
     def getColorModes(self):
-        return self.trip_points.keys()
+        return list(self.trip_points.keys())
 
     def enumerateTripPoints(self, time_step, trip_points):
         temp = self.midnight_early
