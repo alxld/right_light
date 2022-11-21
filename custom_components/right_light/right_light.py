@@ -56,6 +56,12 @@ class RightLight:
         self._brightness = kwargs.get("brightness", 255)
         self._brightness_override = kwargs.get("brightness_override", 0)
 
+        if self._debug:
+            self._logger.error(f"RightLight turn_on: {kwargs}")
+            self._logger.error(
+                f"RightLight turn_on: {self._mode}, {self._brightness}, {self._brightness_override}"
+            )
+
         # Find trip points around current time
         for next in range(0, len(self.trip_points[self._mode])):
             if self.trip_points[self._mode][next][0] >= self.now:
@@ -345,62 +351,17 @@ class RightLight:
         self.trip_points["Vivid"] = self.enumerateTripPoints(
             timestep, vivid_trip_points
         )
-        # temp = self.midnight_early
-        # this_ptr = 0
-        # self.trip_points["Vivid"] = []
-        # while temp < self.midnight_late:
-        #    self.trip_points["Vivid"].append([temp, vivid_trip_points[this_ptr]])
-        #
-        #            temp = temp + timestep
-        #
-        #            this_ptr = this_ptr + 1
-        #            if this_ptr >= len(vivid_trip_points):
-        #                this_ptr = 0
 
         # Loop to create bright trip points
         self.trip_points["Bright"] = self.enumerateTripPoints(
             timestep, bright_trip_points
         )
-        # temp = self.midnight_early
-        # this_ptr = 0
-        # self.trip_points["Bright"] = []
-        # while temp < self.midnight_late:
-        #    self.trip_points["Bright"].append([temp, bright_trip_points[this_ptr]])
-        #
-        #            temp = temp + timestep
-        #
-        #            this_ptr = this_ptr + 1
-        #            if this_ptr >= len(bright_trip_points):
-        #                this_ptr = 0
 
         # Loop to create 'one' trip points
         self.trip_points["One"] = self.enumerateTripPoints(timestep, one_trip_points)
-        # temp = self.midnight_early
-        # this_ptr = 0
-        # self.trip_points["One"] = []
-        # while temp < self.midnight_late:
-        #    self.trip_points["One"].append([temp, one_trip_points[this_ptr]])
-        #
-        #            temp = temp + timestep
-        #
-        #            this_ptr = this_ptr + 1
-        #            if this_ptr >= len(one_trip_points):
-        #                this_ptr = 0
 
         # Loop to create 'two' trip points
         self.trip_points["Two"] = self.enumerateTripPoints(timestep, two_trip_points)
-        # temp = self.midnight_early
-        # this_ptr = 0
-        # self.trip_points["Two"] = []
-        # while temp < self.midnight_late:
-        #    self.trip_points["Two"].append([temp, two_trip_points[this_ptr]])
-
-    #
-    #            temp = temp + timestep
-    #
-    #            this_ptr = this_ptr + 1
-    #            if this_ptr >= len(two_trip_points):
-    #                this_ptr = 0
 
     def getColorModes(self):
         return list(self.trip_points.keys())
