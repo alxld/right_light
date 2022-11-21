@@ -50,11 +50,11 @@ class RightLight:
         # Cancel any pending eventloop schedules
         self._cancelSched()
 
-        self._getNow()
-
         self._mode = kwargs.get("mode", "Normal")
         self._brightness = kwargs.get("brightness", 255)
         self._brightness_override = kwargs.get("brightness_override", 0)
+
+        self._getNow(mode=self._mode)
 
         if self._debug:
             self._logger.error(f"RightLight turn_on: {kwargs}")
@@ -255,7 +255,7 @@ class RightLight:
             self._currSched.pop(0)
         self._currSched.append(ret)
 
-    def _getNow(self):
+    def _getNow(self, mode=None):
         self.now = dt.now()
         rerun = date.today() != self.today
         self.today = date.today()
@@ -276,92 +276,99 @@ class RightLight:
                 microsecond=0, second=59, minute=59, hour=23
             )
 
-            self.defineTripPoints()
+            self.defineTripPoints(mode)
 
-    def defineTripPoints(self):
-        self.trip_points["Normal"] = []
-        timestep = timedelta(minutes=2)
+    def defineTripPoints(self, mode=None):
+        if mode == "Normal":
+            self.trip_points["Normal"] = []
+            timestep = timedelta(minutes=2)
 
-        # In debug mode, add in drastic changes every two minutes to increase observability
-        if self._debug:
-            debug_trip_points = [[2500, 120], [4000, 255]]
-            self.trip_points["Normal"] = self.enumerateTripPoints(
-                timestep, debug_trip_points
+            # In debug mode, add in drastic changes every two minutes to increase observability
+            if self._debug:
+                debug_trip_points = [[2500, 120], [4000, 255]]
+                self.trip_points["Normal"] = self.enumerateTripPoints(
+                    timestep, debug_trip_points
+                )
+            else:
+                self.trip_points["Normal"].append(
+                    [self.midnight_early, [2500, 150]]
+                )  # Midnight morning
+                self.trip_points["Normal"].append(
+                    [self.sunrise - timedelta(minutes=60), [2500, 120]]
+                )  # Sunrise - 60
+                self.trip_points["Normal"].append(
+                    [self.sunrise - timedelta(minutes=30), [2700, 170]]
+                )  # Sunrise - 30
+                self.trip_points["Normal"].append(
+                    [self.sunrise, [3200, 155]]
+                )  # Sunrise
+                self.trip_points["Normal"].append(
+                    [self.sunrise + timedelta(minutes=30), [4700, 255]]
+                )  # Sunrise + 30
+                self.trip_points["Normal"].append(
+                    [self.sunset - timedelta(minutes=90), [4200, 255]]
+                )  # Sunset - 90
+                self.trip_points["Normal"].append(
+                    [self.sunset - timedelta(minutes=30), [3200, 255]]
+                )  # Sunset = 30
+                self.trip_points["Normal"].append([self.sunset, [2700, 255]])  # Sunset
+                self.trip_points["Normal"].append(
+                    [
+                        self.now.replace(microsecond=0, second=0, minute=30, hour=22),
+                        [2500, 255],
+                    ]
+                )  # 10:30
+                self.trip_points["Normal"].append(
+                    [self.midnight_late, [2500, 150]]
+                )  # Midnight night
+        elif mode == "Vivid":
+            vivid_trip_points = [
+                [255, 0, 0],
+                [202, 0, 127],
+                [130, 0, 255],
+                [0, 0, 255],
+                [0, 90, 190],
+                [0, 200, 200],
+                [0, 255, 0],
+                [255, 255, 0],
+                [255, 127, 0],
+            ]
+
+            # Loop to create vivid trip points
+            self.trip_points["Vivid"] = self.enumerateTripPoints(
+                timestep, vivid_trip_points
             )
-        else:
-            self.trip_points["Normal"].append(
-                [self.midnight_early, [2500, 150]]
-            )  # Midnight morning
-            self.trip_points["Normal"].append(
-                [self.sunrise - timedelta(minutes=60), [2500, 120]]
-            )  # Sunrise - 60
-            self.trip_points["Normal"].append(
-                [self.sunrise - timedelta(minutes=30), [2700, 170]]
-            )  # Sunrise - 30
-            self.trip_points["Normal"].append([self.sunrise, [3200, 155]])  # Sunrise
-            self.trip_points["Normal"].append(
-                [self.sunrise + timedelta(minutes=30), [4700, 255]]
-            )  # Sunrise + 30
-            self.trip_points["Normal"].append(
-                [self.sunset - timedelta(minutes=90), [4200, 255]]
-            )  # Sunset - 90
-            self.trip_points["Normal"].append(
-                [self.sunset - timedelta(minutes=30), [3200, 255]]
-            )  # Sunset = 30
-            self.trip_points["Normal"].append([self.sunset, [2700, 255]])  # Sunset
-            self.trip_points["Normal"].append(
-                [
-                    self.now.replace(microsecond=0, second=0, minute=30, hour=22),
-                    [2500, 255],
-                ]
-            )  # 10:30
-            self.trip_points["Normal"].append(
-                [self.midnight_late, [2500, 150]]
-            )  # Midnight night
+        elif mode == "Bright":
+            bright_trip_points = [
+                [255, 100, 100],
+                [202, 80, 127],
+                [150, 70, 255],
+                [90, 90, 255],
+                [60, 100, 190],
+                [70, 200, 200],
+                [80, 255, 80],
+                [255, 255, 0],
+                [255, 127, 70],
+            ]
 
-        vivid_trip_points = [
-            [255, 0, 0],
-            [202, 0, 127],
-            [130, 0, 255],
-            [0, 0, 255],
-            [0, 90, 190],
-            [0, 200, 200],
-            [0, 255, 0],
-            [255, 255, 0],
-            [255, 127, 0],
-        ]
+            # Loop to create bright trip points
+            self.trip_points["Bright"] = self.enumerateTripPoints(
+                timestep, bright_trip_points
+            )
+        elif mode == "One":
+            one_trip_points = [[0, 104, 255], [255, 0, 255]]
 
-        bright_trip_points = [
-            [255, 100, 100],
-            [202, 80, 127],
-            [150, 70, 255],
-            [90, 90, 255],
-            [60, 100, 190],
-            [70, 200, 200],
-            [80, 255, 80],
-            [255, 255, 0],
-            [255, 127, 70],
-        ]
+            # Loop to create 'one' trip points
+            self.trip_points["One"] = self.enumerateTripPoints(
+                timestep, one_trip_points
+            )
+        elif mode == "Two":
+            two_trip_points = [[255, 0, 255], [0, 104, 255]]
 
-        one_trip_points = [[0, 104, 255], [255, 0, 255]]
-
-        two_trip_points = [[255, 0, 255], [0, 104, 255]]
-
-        # Loop to create vivid trip points
-        self.trip_points["Vivid"] = self.enumerateTripPoints(
-            timestep, vivid_trip_points
-        )
-
-        # Loop to create bright trip points
-        self.trip_points["Bright"] = self.enumerateTripPoints(
-            timestep, bright_trip_points
-        )
-
-        # Loop to create 'one' trip points
-        self.trip_points["One"] = self.enumerateTripPoints(timestep, one_trip_points)
-
-        # Loop to create 'two' trip points
-        self.trip_points["Two"] = self.enumerateTripPoints(timestep, two_trip_points)
+            # Loop to create 'two' trip points
+            self.trip_points["Two"] = self.enumerateTripPoints(
+                timestep, two_trip_points
+            )
 
     def getColorModes(self):
         return list(self.trip_points.keys())
