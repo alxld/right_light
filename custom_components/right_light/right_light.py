@@ -55,6 +55,7 @@ class RightLight:
         self._mode = kwargs.get("mode", "Normal")
         self._brightness = kwargs.get("brightness", 255)
         self._brightness_override = kwargs.get("brightness_override", 0)
+        this_transition = kwargs.get("transition", self.on_transition)
 
         if self._debug:
             self._logger.error(f"RightLight turn_on: {kwargs}")
