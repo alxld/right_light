@@ -45,7 +45,7 @@ class RightLight:
 
         :key brightness: The master brightness control
         :key brightness_override: Additional brightness to add on to RightLight's calculated brightness
-        :key mode: One of the trip_point key names (Normal, Vivid, Bright, One, Two)
+        :key mode: One of the trip_point key names (Normal, Vivid, Fun, Bright, One, Two)
         """
         # Cancel any pending eventloop schedules
         self._cancelSched()
@@ -129,7 +129,8 @@ class RightLight:
                     "entity_id": self._entity,
                     "brightness": br,
                     "kelvin": ct,
-                    "transition": self.on_transition,
+                    # "transition": self.on_transition,
+                    transition: this_transition,
                 },
                 blocking=True,
                 limit=2,
@@ -284,7 +285,7 @@ class RightLight:
         timestep = timedelta(minutes=2)
 
         # In debug mode, add in drastic changes every two minutes to increase observability
-        if self._debug:
+        if self._debug == 2:
             debug_trip_points = [[2500, 120], [4000, 255]]
             self.trip_points["Normal"] = self.enumerateTripPoints(
                 timestep, debug_trip_points
@@ -351,6 +352,11 @@ class RightLight:
         # Loop to create vivid trip points
         self.trip_points["Vivid"] = self.enumerateTripPoints(
             timestep, vivid_trip_points
+        )
+
+        # Faster timestep for Fun mode
+        self.trip_points["Fun"] = self.enumerateTripPoints(
+            timestep / 4, vivid_trip_points
         )
 
         # Loop to create bright trip points
