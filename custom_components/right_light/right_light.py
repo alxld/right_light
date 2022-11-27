@@ -130,7 +130,7 @@ class RightLight:
                     "brightness": br,
                     "kelvin": ct,
                     # "transition": self.on_transition,
-                    transition: this_transition,
+                    "transition": this_transition,
                 },
                 blocking=True,
                 limit=2,
@@ -138,7 +138,7 @@ class RightLight:
 
             # Transition to next values
             self._hass.loop.call_later(
-                self.on_transition + 0.5,
+                this_transition + 0.5,
                 self._hass.loop.create_task,
                 self._turn_on_specific(
                     {
@@ -223,7 +223,8 @@ class RightLight:
         """External version of _turn_on_specific that runs twice to ensure successful transition"""
         await self.disable()
 
-        data["transition"] = 0.2
+        if not "transition" in data:
+            data["transition"] = 0.2
         if not "brightness" in data:
             data["brightness"] = 255
 
