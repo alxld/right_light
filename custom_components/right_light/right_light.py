@@ -131,6 +131,7 @@ class RightLight:
                     "kelvin": ct,
                     # "transition": self.on_transition,
                     "transition": this_transition,
+                    "effect": "stop_effect",
                 },
                 blocking=True,
                 limit=2,
@@ -146,6 +147,7 @@ class RightLight:
                         "brightness": br_next,
                         "kelvin": ct_next,
                         "transition": time_rem,
+                        "effect": "stop_effect",
                     }
                 ),
             )
@@ -185,7 +187,8 @@ class RightLight:
                     "entity_id": self._entity,
                     "brightness": 255,
                     "rgb_color": now_rgb,
-                    "transition": self.on_color_transition,
+                    # "transition": self.on_color_transition,
+                    "transition": this_transition,
                 },
                 blocking=True,
                 limit=2,
@@ -193,7 +196,7 @@ class RightLight:
 
             # Transition to next values
             self._hass.loop.call_later(
-                self.on_color_transition + 0.5,
+                this_transition + 0.5,
                 self._hass.loop.create_task,
                 self._turn_on_specific(
                     {
