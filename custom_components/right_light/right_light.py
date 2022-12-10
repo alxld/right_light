@@ -131,7 +131,7 @@ class RightLight:
                     "kelvin": ct,
                     # "transition": self.on_transition,
                     "transition": this_transition,
-                    "effect": "stop_effect",
+                    #"effect": "stop_effect",
                 },
                 blocking=True,
                 limit=2,
@@ -147,7 +147,7 @@ class RightLight:
                         "brightness": br_next,
                         "kelvin": ct_next,
                         "transition": time_rem,
-                        "effect": "stop_effect",
+                        #"effect": "stop_effect",
                     }
                 ),
             )
