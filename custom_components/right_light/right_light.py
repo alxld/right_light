@@ -134,7 +134,7 @@ class RightLight:
                     "effect": "stop_effect",
                 },
                 blocking=True,
-                limit=2,
+                # limit=2,
             )
 
             # Transition to next values
@@ -191,7 +191,7 @@ class RightLight:
                     "transition": this_transition,
                 },
                 blocking=True,
-                limit=2,
+                # limit=2,
             )
 
             # Transition to next values
@@ -365,7 +365,7 @@ class RightLight:
 
         # Faster timestep for Fun2 mode, time shifted from Fun1
         self.trip_points["Fun2"] = self.enumerateTripPoints(
-            timestep / 8, vivid_trip_points[1:]+[vivid_trip_points[0]]
+            timestep / 8, vivid_trip_points[1:] + [vivid_trip_points[0]]
         )
 
         # Loop to create bright trip points
