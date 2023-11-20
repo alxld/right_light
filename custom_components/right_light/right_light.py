@@ -313,12 +313,12 @@ class RightLight:
             )  # Sunset - 90
             self.trip_points["Normal"].append(
                 [self.sunset - timedelta(minutes=30), [3200, 255]]
-            )  # Sunset = 30
-            self.trip_points["Normal"].append([self.sunset, [2700, 255]])  # Sunset
+            )  # Sunset - 30
+            self.trip_points["Normal"].append([self.sunset, [3000, 255]])  # Sunset
             self.trip_points["Normal"].append(
                 [
-                    self.now.replace(microsecond=0, second=0, minute=30, hour=22),
-                    [2500, 255],
+                    self.sunset.replace(microsecond=0, second=0, minute=30, hour=22),
+                    [2700, 255],
                 ]
             )  # 10:30
             self.trip_points["Normal"].append(
