@@ -1,7 +1,7 @@
 from homeassistant.helpers import entity
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
-import logging
+import logging, random, asyncio
 from suntime import Sun
 from datetime import date, timedelta
 
@@ -26,10 +26,10 @@ class RightLight:
 
         self._br_over_ct_mult = 6
 
-        self.on_transition = 0.1
-        self.on_color_transition = 0.1
-        self.off_transition = 0.1
-        self.dim_transition = 0.1
+        self.on_transition = 0.2
+        self.on_color_transition = 0.2
+        self.off_transition = 0.2
+        self.dim_transition = 0.2
 
         # Store callback for cancelling scheduled next event
         self._currSched = []
@@ -48,7 +48,9 @@ class RightLight:
         :key mode: One of the trip_point key names (Normal, Vivid, Fun1, Fun2, Bright, One, Two)
         """
         # Cancel any pending eventloop schedules
-        self._cancelSched()
+        nocancel = kwargs.get("nocancel", False)
+        if not nocancel:
+            self._cancelSched()
 
         self._getNow()
 
@@ -62,6 +64,10 @@ class RightLight:
             self._logger.error(
                 f"RightLight turn_on: {self._mode}, {self._brightness}, {self._brightness_override}"
             )
+
+        if self._brightness == 0:
+            await self.disable_and_turn_off(**kwargs)
+            return
 
         # Find trip points around current time
         for next in range(0, len(self.trip_points[self._mode])):
@@ -131,38 +137,57 @@ class RightLight:
                     "kelvin": ct,
                     # "transition": self.on_transition,
                     "transition": this_transition,
-                    "effect": "stop_effect",
+                    # "effect": "stop_effect",
                 },
                 blocking=True,
                 # limit=2,
             )
 
-            # Transition to next values
-            self._hass.loop.call_later(
-                this_transition + 0.5,
-                self._hass.loop.create_task,
-                self._turn_on_specific(
+            # Transition to next values, but schedule it some random time in the near future
+            #            ret = self._hass.loop.create_task(
+            #                self.delay_run(
+            #                    random.randrange(1, 5),
+            #                    self.turn_on_specific,
+            #                    {
+            #                        "entity_id": self._entity,
+            #                        "brightness": br_next,
+            #                        "kelvin": ct_next,
+            #                        "transition": time_rem,
+            #                    },
+            #                )
+            #            )
+            #            self._addSched(ret)
+            #            await ret
+
+            ret = self._hass.loop.create_task(
+                self.delay_run(
+                    random.randrange(1, 5),
+                    self._hass.services.async_call,
+                    "light",
+                    "turn_on",
                     {
                         "entity_id": self._entity,
                         "brightness": br_next,
                         "kelvin": ct_next,
                         "transition": time_rem,
-                        "effect": "stop_effect",
-                    }
-                ),
+                    },
+                )
             )
+            self._addSched(ret)
 
             # Schedule another turn_on at next_time to start the next transition
             # Add 1 second to ensure next event is after trigger point
-            ret = self._hass.loop.call_later(
-                (next_time - self.now).seconds + 1,
-                self._hass.loop.create_task,
-                self.turn_on(
+            ret = self._hass.loop.create_task(
+                self.delay_run(
+                    (next_time - self.now).seconds + 1,
+                    self.turn_on,
                     brightness=self._brightness,
                     brightness_override=self._brightness_override,
-                ),
+                    nocancel=True,
+                )
             )
             self._addSched(ret)
+            # await ret
 
         else:
             prev_rgb = self.trip_points[self._mode][prev][1]
@@ -185,7 +210,7 @@ class RightLight:
                 "turn_on",
                 {
                     "entity_id": self._entity,
-                    "brightness": 255,
+                    "brightness": self._brightness,
                     "rgb_color": now_rgb,
                     # "transition": self.on_color_transition,
                     "transition": this_transition,
@@ -195,56 +220,100 @@ class RightLight:
             )
 
             # Transition to next values
-            self._hass.loop.call_later(
-                this_transition + 0.5,
-                self._hass.loop.create_task,
-                self._turn_on_specific(
+            # ret = self._hass.loop.create_task(
+            #    self.delay_run(
+            #        random.randrange(10, 30),
+            #        self.turn_on_specific,
+            #        {
+            #            "entity_id": self._entity,
+            #            "brightness": 255,
+            #            "rgb_color": next_rgb,
+            #            "transition": time_rem,
+            #        },
+            #    )
+            # )
+            # self._addSched(ret)
+            # await ret
+
+            ret = self._hass.loop.create_task(
+                self.delay_run(
+                    random.randrange(1, 5),
+                    self._hass.services.async_call,
+                    "light",
+                    "turn_on",
                     {
                         "entity_id": self._entity,
-                        "brightness": 255,
+                        "brightness": self._brightness,
                         "rgb_color": next_rgb,
                         "transition": time_rem,
-                    }
-                ),
-            )
-
-            # Schedule another turn on at next_time to start the next transition
-            ret = self._hass.loop.call_later(
-                (next_time - self.now).seconds + 1,
-                self._hass.loop.create_task,
-                self.turn_on(mode=self._mode),
+                    },
+                )
             )
             self._addSched(ret)
 
-    async def _turn_on_specific(self, data) -> None:
-        """Disables RightLight functionality and sets light to values in 'data' variable"""
+            # Schedule another turn on at next_time to start the next transition
+            ret = self._hass.loop.create_task(
+                self.delay_run(
+                    (next_time - self.now).seconds + 1,
+                    self.turn_on,
+                    mode=self._mode,
+                    nocancel=True,
+                    brightness=self._brightness,
+                )
+            )
+            self._addSched(ret)
+            # await ret
+
+    # Helper function to be used to create a task and run a coroutine in the future
+    async def delay_run(self, seconds, coro, *args, **kwargs):
         if self._debug:
-            self._logger.error(f"_turn_on_specific: {data}")
-        await self._hass.services.async_call("light", "turn_on", data)
+            self._logger.error(
+                f"delay_run: s:{seconds}, c:{coro}, a:{args}, k:{kwargs}"
+            )
+        await asyncio.sleep(seconds)
+        # await self._hass.loop.sleep(seconds)
+        await coro(*args, **kwargs)
+
+    # async def _turn_on_specific(self, data) -> None:
+    #    """Disables RightLight functionality and sets light to values in 'data' variable"""
+    #    if self._debug:
+    #        self._logger.error(f"_turn_on_specific: {data}")
+    #    await self._hass.services.async_call("light", "turn_on", data)
 
     async def turn_on_specific(self, data) -> None:
         """External version of _turn_on_specific that runs twice to ensure successful transition"""
+        if self._debug:
+            self._logger.error(f"turn_on_specific: {data}")
         await self.disable()
 
         if not "transition" in data:
-            data["transition"] = 0.2
+            data["transition"] = self.on_transition
         if not "brightness" in data:
             data["brightness"] = 255
 
-        await self._turn_on_specific(data)
-        self._hass.loop.call_later(
-            0.6, self._hass.loop.create_task, self._turn_on_specific(data)
-        )
+        # await self._turn_on_specific(data)
+        await self._hass.services.async_call("light", "turn_on", data)
 
-    async def disable_and_turn_off(self):
+        # Removing second call - if things break, this may be why
+        # self._hass.loop.call_later(
+        #    0.6, self._hass.loop.create_task, self._turn_on_specific(data)
+        # )
+
+    async def disable_and_turn_off(self, **kwargs):
         # Cancel any pending eventloop schedules
+        if self._debug:
+            self._logger.error(f"turn_off")
         self._cancelSched()
 
         self._brightness = 0
+
         await self._hass.services.async_call(
             "light",
             "turn_off",
-            {"entity_id": self._entity, "transition": self.off_transition},
+            {
+                "entity_id": self._entity,
+                "transition": kwargs.get("transition", self.off_transition),
+            },
         )
 
     async def disable(self):
@@ -252,14 +321,25 @@ class RightLight:
         self._cancelSched()
 
     def _cancelSched(self):
-        for ret in self._currSched:
+        if self._debug:
+            self._logger.error(f"_cancelSched: {len(self._currSched)}")
+        while self._currSched:
+            ret = self._currSched.pop(0)
             ret.cancel()
+        # for ret in self._currSched:
+        #    ret.cancel()
+        if self._debug:
+            self._logger.error(f"_cancelSched End: {len(self._currSched)}")
 
     def _addSched(self, ret):
         # FIFO of event callbacks to ensure all are properly cancelled
-        if len(self._currSched) >= 3:
-            self._currSched.pop(0)
+        # if len(self._currSched) >= 3:
+        #    self._currSched.pop(0)
+        if self._debug:
+            self._logger.error(f"_addSched: {len(self._currSched)}")
         self._currSched.append(ret)
+        if self._debug:
+            self._logger.error(f"_addSched End: {len(self._currSched)}")
 
     def _getNow(self):
         self.now = dt.now()
@@ -278,6 +358,9 @@ class RightLight:
             self.midnight_early = self.now.replace(
                 microsecond=0, second=0, minute=0, hour=0
             )
+            self.ten_thirty = self.now.replace(
+                microsecond=0, second=0, minute=30, hour=22
+            )
             self.midnight_late = self.now.replace(
                 microsecond=0, second=59, minute=59, hour=23
             )
@@ -292,7 +375,7 @@ class RightLight:
         if self._debug == 2:
             debug_trip_points = [[2500, 120], [4000, 255]]
             self.trip_points["Normal"] = self.enumerateTripPoints(
-                timestep, debug_trip_points
+                timestep / 8, debug_trip_points
             )
         else:
             self.trip_points["Normal"].append(
@@ -313,14 +396,9 @@ class RightLight:
             )  # Sunset - 90
             self.trip_points["Normal"].append(
                 [self.sunset - timedelta(minutes=30), [3200, 255]]
-            )  # Sunset - 30
+            )  # Sunset = 30
             self.trip_points["Normal"].append([self.sunset, [3000, 255]])  # Sunset
-            self.trip_points["Normal"].append(
-                [
-                    self.sunset.replace(microsecond=0, second=0, minute=30, hour=22),
-                    [2700, 255],
-                ]
-            )  # 10:30
+            self.trip_points["Normal"].append([self.ten_thirty, [2700, 255]])  # 10:30
             self.trip_points["Normal"].append(
                 [self.midnight_late, [2500, 150]]
             )  # Midnight night
@@ -349,6 +427,17 @@ class RightLight:
             [255, 127, 70],
         ]
 
+        calm_trip_points = [
+            [255, 0, 0],
+            [202, 0, 127],
+            [130, 0, 255],
+            [0, 0, 255],
+            [0, 90, 190],
+            [0, 200, 200],
+            [0, 255, 0],
+            [255, 127, 0],
+        ]
+
         one_trip_points = [[0, 104, 255], [255, 0, 255]]
 
         two_trip_points = [[255, 0, 255], [0, 104, 255]]
@@ -372,6 +461,9 @@ class RightLight:
         self.trip_points["Bright"] = self.enumerateTripPoints(
             timestep, bright_trip_points
         )
+
+        # Loop to create calm trip points
+        self.trip_points["Calm"] = self.enumerateTripPoints(timestep, calm_trip_points)
 
         # Loop to create 'one' trip points
         self.trip_points["One"] = self.enumerateTripPoints(timestep, one_trip_points)
